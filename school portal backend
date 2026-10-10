@@ -1,0 +1,217 @@
+{
+  "name": "school-portal-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1",
+    "axios": "^1.6.0"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build"
+  },
+  "browserslist": {
+    "production": [">0.2%", "not dead", "not op_mini all"],
+    "development": ["last 1 chrome version", "last 1 firefox version", "last 1 safari version"]
+  }
+}
+
+2. public/index.html
+(Create a folder named public and put this file inside it)
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>School Portal</title>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
+
+3. src/index.js
+(Create a folder named src and put this file inside it)
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+4. src/App.js
+(This is the main logic file. Replace the API URL with your Render backend URL later)
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+
+// CHANGE THIS TO YOUR RENDER BACKEND URL LATER
+const API_URL = 'localhost:8000'; 
+
+function App() {
+  const [students, setStudents] = useState([]);
+  const [newStudent, setNewStudent] = useState({ name: '', grade: '' });
+
+  // Fetch students on load
+  useEffect(() => {
+    fetchStudents();
+  }, []);
+
+  const fetchStudents = async () => {
+    try {
+      const res = await axios.get(${API_URL}/students);
+      setStudents(res.data);
+    } catch (err) {
+      console.error("Error fetching students:", err);
+    }
+  };
+
+  const handleAddStudent = async (e) => {
+    e.preventDefault();
+    if (!newStudent.name || !newStudent.grade) return;
+
+    try {
+      await axios.post(${API_URL}/students, newStudent);
+      setNewStudent({ name: '', grade: '' });
+      fetchStudents(); // Refresh list
+    } catch (err) {
+      console.error("Error adding student:", err);
+    }
+  };
+
+  return (
+    <div style={{ padding: '20px', fontFamily: 'Arial' }}>
+      <h1>School Portal</h1>
+      
+      <form onSubmit={handleAddStudent} style={{ marginBottom: '20px' }}>
+        <input 
+          type="text" 
+          placeholder="Student Name" 
+          value={newStudent.name}
+          onChange={(e) => setNewStudent({...newStudent, name: e.target.value})}
+          style={{ padding: '8px', marginRight: '10px' }}
+        />
+        <input 
+          type="text" 
+          placeholder="Grade" 
+          value={newStudent.grade}
+          onChange={(e) => setNewStudent({...newStudent, grade: e.target.value})}
+          style={{ padding: '8px', marginRight: '10px' }}
+        />
+        <button type="submit" style={{ padding: '8px 16px' }}>Add Student</button>
+      </form>
+
+      <h2>Students List</h2>
+      <ul>
+        {students.map(student => (
+          <li key={student.id}>
+            {student.name} - Grade: {student.grade}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default App;
+
+5. .gitignore
+(Create this in the root of your frontend folder)
+node_modules/
+build/
+.env
+
+Next Steps:
+1. Create these files in your school-portal-frontend folder.
+2. Open your terminal in that folder and run:
+    npm install
+    
+
+3. Then drag the entire school-portal-frontend folder into GitHub (as we discussed).
+
+Let me know when you've done that! 🚀
+the backend now
+
+Qwen 3.6 35B 800 tokensHere is the complete code for your backend (school-portal-backend). You need to create these files in your school-portal-backend folder.
+1. requirements.txt
+(Create this file in the root of your backend folder)
+fastapi==0.104.1
+uvicorn==0.24.0
+sqlalchemy==2.0.23
+pydantic==2.5.2
+
+2. database.py
+(Create a file named database.py)
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+
+# SQLite database file
+DATABASE_URL = "sqlite:///./school_portal.db"
+
+engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+3. models.py
+(Create a file named models.py)
+from sqlalchemy import Column, Integer, String
+from .database import Base
+
+class Student(Base):
+    __tablename__ = "students"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    grade = Column(String, index=True)
+
+4. main.py
+(Create a file named main.py)
+from fastapi import FastAPI, Depends, HTTPException
+from sqlalchemy.orm import Session
+from . import models
+from .database import engine, get_db
+from pydantic import BaseModel
+
+# Create tables if they don't exist
+models.Base.metadata.create_all(bind=engine)
+
+app = FastAPI()
+
+# Pydantic model for input validation
+class StudentCreate(BaseModel):
+    name: str
+    grade: str
+
+@app.get("/students")
+def get_students(db: Session = Depends(get_db)):
+    return db.query(models.Student).all()
+
+@app.post("/students")
+def add_student(student: StudentCreate, db: Session = Depends(get_db)):
+    new_student = models.Student(name=student.name, grade=student.grade)
+    db.add(new_student)
+    db.commit()
+    db.refresh(new_student)
+    return new_student
+
+5. __init__.py
+(Create an empty file named __init__.py inside the same folder as main.py, models.py, etc.)
+This tells Python that this folder is a package.
+Next Steps:
+1. Create these files in your school-portal-backend folder.
+2. Open your terminal in that folder and run:
+    pip install -r requirements.txt
+    
